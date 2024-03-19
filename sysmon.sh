@@ -72,11 +72,11 @@ debug() {
 ##### Helper functions #####
 
 cmd_exists() {
-  command -v "$1" 2>&1 >/dev/null
+    command -v "$1" 2>&1 >/dev/null
 }
 
 beginswith() {
-    case "$2" in "$1"*) true;; *) false;; esac;
+    case "$2" in "$1"*) true ;; *) false ;; esac
 }
 
 print_key_vals() {
@@ -108,8 +108,8 @@ active_nic() {
         nic_name=$(basename "$nic_path")
         is_virtual=$(deref_path_symlink "$nic_path" | grep virtual)
 
-        # skip possibly virtual or inactive devices 
-        if [ -z "$is_virtual" ] && [ "$(cat $nic_path/operstate)" = "up" ]; then 
+        # skip possibly virtual or inactive devices
+        if [ -z "$is_virtual" ] && [ "$(cat $nic_path/operstate)" = "up" ]; then
             echo "$nic_name"
             return 0
         fi
@@ -119,7 +119,7 @@ active_nic() {
 }
 
 temperature_sensor_names() {
-    if ! ls /sys/class/thermal/thermal_zone* > /dev/null 2>&1; then
+    if ! ls /sys/class/thermal/thermal_zone* >/dev/null 2>&1; then
         return
     fi
 
@@ -146,7 +146,7 @@ avg_load() {
 }
 
 top_cpu() {
-    field_ind_to_name="$(top -bn1 | grep -E  '^ +PID' | sed 's/\s\s*/\n/g' |tail -n +2| grep -nx ".*")"
+    field_ind_to_name="$(top -bn1 | grep -E '^ +PID' | sed 's/\s\s*/\n/g' | tail -n +2 | grep -nx ".*")"
 
     cpu_ind=$(echo "$field_ind_to_name" | grep "%CPU" | cut -d: -f1)
     command_ind=$(echo "$field_ind_to_name" | grep "COMMAND" | cut -d: -f1)
@@ -161,7 +161,7 @@ top_cpu() {
         cpu_pc=$(echo $line | cut -d' ' -f1 | awk '{printf $1 / '$CPU_COUNT'}')
         command_name=$(echo $line | cut -d' ' -f2-)
 
-        # ignore given command 
+        # ignore given command
         if [ ! -z "$CONFIG_TOP_CPU_IGNORE_COMMAND" ] && (beginswith "$command_name" "$CONFIG_TOP_CPU_IGNORE_COMMAND"); then
             continue
         fi
@@ -172,14 +172,14 @@ top_cpu() {
         did_print=1
 
         print_key_vals \
-            "top_${i}_command_name"   "\"$command_name\"" \
+            "top_${i}_command_name" "\"$command_name\"" \
             "top_${i}_command_cpu_pc" "$cpu_pc"
 
         if [ $i -ge $CONFIG_TOP_CPU_MAX ]; then
             return
         fi
 
-        i=$((i+1))
+        i=$((i + 1))
     done
 }
 
@@ -212,7 +212,7 @@ wifi_signal() {
 }
 
 temperature() {
-    if ! ls /sys/class/thermal/thermal_zone* > /dev/null 2>&1; then
+    if ! ls /sys/class/thermal/thermal_zone* >/dev/null 2>&1; then
         return 1
     fi
 
@@ -249,7 +249,7 @@ swap_usage() {
     fi
 
     swap_free_kB=$(echo "$mem" | grep SwapFree | awk '{printf $2}')
-    swap_used_pc=$(echo | awk '{printf 100 * ('$swap_total_kB' - '$swap_free_kB') / '$swap_total_kB'}') 
+    swap_used_pc=$(echo | awk '{printf 100 * ('$swap_total_kB' - '$swap_free_kB') / '$swap_total_kB'}')
 
     print_key_vals \
         swap_free_kB $swap_free_kB \
@@ -361,28 +361,27 @@ publish_state_loop() {
 
     time_pub_next=$(date +"%s")
 
-    while true
-    do
+    while true; do
         time_now=$(date +"%s")
-        time_sleep=$(( $time_pub_next - $time_now ))
+        time_sleep=$(($time_pub_next - $time_now))
 
         if [ $time_sleep -gt 0 ]; then
             debug "sleeping for $time_sleep s"
             sleep $time_sleep
         fi
 
-        time_pub_next=$(( $time_pub_next + $MQTT_PUBLISH_PERIOD))
+        time_pub_next=$(($time_pub_next + $MQTT_PUBLISH_PERIOD))
 
         data="$(host_name)"
-        [ $ENABLE_MEMORY      -eq 1 ] && val=$(memory_usage)    && data="${data},$val"
-        [ $ENABLE_SWAP        -eq 1 ] && val=$(swap_usage)      && data="${data},$val"
-        [ $ENABLE_DISK        -eq 1 ] && val=$(disk_usage)      && data="${data},$val"
-        [ $ENABLE_LOAD        -eq 1 ] && val=$(avg_load)        && data="${data},$val"
-        [ $ENABLE_WIFI        -eq 1 ] && val=$(wifi_signal)     && data="${data},$val"
-        [ $ENABLE_UPTIME      -eq 1 ] && val=$(uptime_duration) && data="${data},$val"
-        [ $ENABLE_PING        -eq 1 ] && val=$(ping_host)       && data="${data},$val"
-        [ $ENABLE_TEMPERATURE -eq 1 ] && val=$(temperature)     && data="${data},$val"
-        [ $ENABLE_TOP_CPU     -eq 1 ] && val=$(top_cpu)         && data="${data},$val"
+        [ $ENABLE_MEMORY -eq 1 ] && val=$(memory_usage) && data="${data},$val"
+        [ $ENABLE_SWAP -eq 1 ] && val=$(swap_usage) && data="${data},$val"
+        [ $ENABLE_DISK -eq 1 ] && val=$(disk_usage) && data="${data},$val"
+        [ $ENABLE_LOAD -eq 1 ] && val=$(avg_load) && data="${data},$val"
+        [ $ENABLE_WIFI -eq 1 ] && val=$(wifi_signal) && data="${data},$val"
+        [ $ENABLE_UPTIME -eq 1 ] && val=$(uptime_duration) && data="${data},$val"
+        [ $ENABLE_PING -eq 1 ] && val=$(ping_host) && data="${data},$val"
+        [ $ENABLE_TEMPERATURE -eq 1 ] && val=$(temperature) && data="${data},$val"
+        [ $ENABLE_TOP_CPU -eq 1 ] && val=$(top_cpu) && data="${data},$val"
 
         json="{${data}}"
 
@@ -410,7 +409,7 @@ publish_discovery_sensor() {
     msg=$msg,$(print_key_vals value_template "\"{{ value_json.${param} }}\"")
     msg=$msg,$(print_key_vals unique_id \"$DEVICE_NAME-$param\")
     msg=$msg,$(print_key_vals device "$device")
-    [ $device_class ]        && msg="$msg,$(print_key_vals device_class \"$device_class\")"
+    [ $device_class ] && msg="$msg,$(print_key_vals device_class \"$device_class\")"
     [ $unit_of_measurement ] && msg=$msg,$(print_key_vals unit_of_measurement \"$unit_of_measurement\")
 
     msg={$msg}
@@ -424,23 +423,23 @@ publish_discovery_all() {
 
     [ $ENABLE_UPTIME -eq 1 ] && publish_discovery_sensor uptime_sec "Uptime" "s" "duration"
 
-    [ $ENABLE_PING   -eq 1 ] && publish_discovery_sensor ping_rtt_ms "Ping RTT" "ms" "duration"    
+    [ $ENABLE_PING -eq 1 ] && publish_discovery_sensor ping_rtt_ms "Ping RTT" "ms" "duration"
 
-    [ $ENABLE_LOAD   -eq 1 ] && publish_discovery_sensor avg_load_1min_pc "CPU load (1 min avg)" "%"
-    [ $ENABLE_LOAD   -eq 1 ] && publish_discovery_sensor avg_load_5min_pc "CPU load (5 min avg)" "%"
-    [ $ENABLE_LOAD   -eq 1 ] && publish_discovery_sensor avg_load_10min_pc "CPU load (10 min avg)" "%"
+    [ $ENABLE_LOAD -eq 1 ] && publish_discovery_sensor avg_load_1min_pc "CPU load (1 min avg)" "%"
+    [ $ENABLE_LOAD -eq 1 ] && publish_discovery_sensor avg_load_5min_pc "CPU load (5 min avg)" "%"
+    [ $ENABLE_LOAD -eq 1 ] && publish_discovery_sensor avg_load_10min_pc "CPU load (10 min avg)" "%"
 
     [ $ENABLE_MEMORY -eq 1 ] && publish_discovery_sensor mem_free_kB "Memory free" "kB"
     [ $ENABLE_MEMORY -eq 1 ] && publish_discovery_sensor mem_used_pc "Memory used" "%"
 
-    [ $ENABLE_SWAP   -eq 1 ] && publish_discovery_sensor swap_free_kB "Swap free" "kB"
-    [ $ENABLE_SWAP   -eq 1 ] && publish_discovery_sensor swap_used_pc "Swap used" "%"
+    [ $ENABLE_SWAP -eq 1 ] && publish_discovery_sensor swap_free_kB "Swap free" "kB"
+    [ $ENABLE_SWAP -eq 1 ] && publish_discovery_sensor swap_used_pc "Swap used" "%"
 
-    [ $ENABLE_WIFI   -eq 1 ] && publish_discovery_sensor wifi_link_pc "WiFi link" "%"
-    [ $ENABLE_WIFI   -eq 1 ] && publish_discovery_sensor wifi_level_dbm "WiFi level" "dBm" "signal_strength"
+    [ $ENABLE_WIFI -eq 1 ] && publish_discovery_sensor wifi_link_pc "WiFi link" "%"
+    [ $ENABLE_WIFI -eq 1 ] && publish_discovery_sensor wifi_level_dbm "WiFi level" "dBm" "signal_strength"
 
-    [ $ENABLE_DISK   -eq 1 ] && publish_discovery_sensor disk_free_kb "Disk free" "kB"
-    [ $ENABLE_DISK   -eq 1 ] && publish_discovery_sensor disk_used_pc "Disk used" "%"
+    [ $ENABLE_DISK -eq 1 ] && publish_discovery_sensor disk_free_kb "Disk free" "kB"
+    [ $ENABLE_DISK -eq 1 ] && publish_discovery_sensor disk_used_pc "Disk used" "%"
 
     if [ $ENABLE_TOP_CPU -eq 1 ]; then
         i=1
@@ -448,12 +447,12 @@ publish_discovery_all() {
             publish_discovery_sensor top_${i}_command_cpu_pc "Top $i command CPU load" "%"
             publish_discovery_sensor top_${i}_command_name "Top $i command name" ""
 
-            i=$(($i+1))
+            i=$(($i + 1))
         done
     fi
 
     if [ $ENABLE_TEMPERATURE -eq 1 ]; then
-        for sensor_name in $(temperature_sensor_names); do        
+        for sensor_name in $(temperature_sensor_names); do
             var_name="temperature_${sensor_name}_C"
             sensor_name=$(echo $sensor_name | sed 's/_temp$//' | sed 's/_/ /')
 
@@ -478,7 +477,7 @@ setup() {
 
     if cmd_exists curl; then
         HAS_CURL=1
-        debug  "using curl"
+        debug "using curl"
         return 0
     elif cmd_exists netcat; then
         HAS_NETCAT=1
@@ -493,7 +492,7 @@ setup() {
         exit 1
     fi
 
-    if ( $NETCAT_CMD 2>&1 | grep "\-w" > /dev/null ); then
+    if ($NETCAT_CMD 2>&1 | grep "\-w" >/dev/null); then
         debug "netcat supports delay parameter"
         NETCAT_CMD="$NETCAT_CMD -w $TIMEOUT_SERVER"
         TIMEOUT_SERVER=0
@@ -542,4 +541,3 @@ else
 fi
 
 start
-
