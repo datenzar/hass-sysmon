@@ -4,6 +4,7 @@
 # Home Assistant configuration defaults (can be overwritten in .config file)
 HASS_TOKEN=""
 HASS_SERVER="homeassistant.local"
+HASS_HTTP_SCHEMA="http"
 HASS_PORT="8123"
 HASS_MQTT_PREFIX="homeassistant"
 
@@ -31,6 +32,7 @@ ENABLE_UPTIME=1
 ENABLE_TEMPERATURE=1
 ENABLE_PING=1
 ENABLE_TOP_CPU=0
+ENABLE_HDD_STATE=0
 
 CONFIG_PING_HOST="192.168.1.1"
 
@@ -189,6 +191,22 @@ uptime_duration() {
     print_key_vals uptime_sec $uptime_sec
 }
 
+check_hdd() {
+    if [ -z "$HDD_DEVICE" ]; then
+        error "HDD_DEVICE is not set"
+        return
+    fi
+
+    hdd_state=$(sudo hdparm -C $HDD_DEVICE | grep state | awk '{print $4}')
+    if [ $? -ne 0 ]; then
+        error "Failed to get HDD state"
+        return
+    fi
+
+    print_key_vals \
+        hdd_state \"$hdd_state\"
+}
+
 disk_usage() {
     root_usage=$(df | grep " /$")
 
@@ -284,7 +302,7 @@ post_json_message_curl() {
     path="$1"
     json="$2"
 
-    url="http://${HASS_SERVER}:${HASS_PORT}${path}"
+    url="${HASS_HTTP_SCHEMA}://${HASS_SERVER}${path}"
 
     response=$(curl -m $TIMEOUT_SERVER -s -X POST -w "\\n%{http_code}\\n" -H "$HTTP_HEADER_AUTH" -H "$HTTP_HEADER_CTYPE" -d "$json" "$url")
     http_code=$(echo "$response" | tail -n 1)
@@ -375,6 +393,7 @@ publish_state_loop() {
         data="$(host_name)"
         [ $ENABLE_MEMORY -eq 1 ] && val=$(memory_usage) && data="${data},$val"
         [ $ENABLE_SWAP -eq 1 ] && val=$(swap_usage) && data="${data},$val"
+        [ $ENABLE_HDD_STATE -eq 1 ] && val=$(hdd_state) && data="${data},$val"
         [ $ENABLE_DISK -eq 1 ] && val=$(disk_usage) && data="${data},$val"
         [ $ENABLE_LOAD -eq 1 ] && val=$(avg_load) && data="${data},$val"
         [ $ENABLE_WIFI -eq 1 ] && val=$(wifi_signal) && data="${data},$val"
@@ -440,6 +459,8 @@ publish_discovery_all() {
 
     [ $ENABLE_DISK -eq 1 ] && publish_discovery_sensor disk_free_kb "Disk free" "kB"
     [ $ENABLE_DISK -eq 1 ] && publish_discovery_sensor disk_used_pc "Disk used" "%"
+
+    [ $ENABLE_HDD_STATE -eq 1 ] && publish_discovery_sensor hdd_state "HDD state" ""
 
     if [ $ENABLE_TOP_CPU -eq 1 ]; then
         i=1
