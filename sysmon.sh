@@ -393,7 +393,7 @@ publish_state_loop() {
         data="$(host_name)"
         [ $ENABLE_MEMORY -eq 1 ] && val=$(memory_usage) && data="${data},$val"
         [ $ENABLE_SWAP -eq 1 ] && val=$(swap_usage) && data="${data},$val"
-        [ $ENABLE_HDD_STATE -eq 1 ] && val=$(hdd_state) && data="${data},$val"
+        [ $ENABLE_HDD_STATE -eq 1 ] && val=$(check_hdd) && data="${data},$val"
         [ $ENABLE_DISK -eq 1 ] && val=$(disk_usage) && data="${data},$val"
         [ $ENABLE_LOAD -eq 1 ] && val=$(avg_load) && data="${data},$val"
         [ $ENABLE_WIFI -eq 1 ] && val=$(wifi_signal) && data="${data},$val"
