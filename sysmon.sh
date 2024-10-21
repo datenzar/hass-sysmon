@@ -33,6 +33,7 @@ ENABLE_TEMPERATURE=1
 ENABLE_PING=1
 ENABLE_TOP_CPU=0
 ENABLE_HDD_STATE=0
+ENABLE_FAN_SPEED=0
 
 CONFIG_PING_HOST="192.168.1.1"
 
@@ -197,7 +198,7 @@ check_hdd() {
         return
     fi
 
-    hdd_state=$(sudo hdparm -C $HDD_DEVICE | grep state | awk '{print $4}')
+    hdd_state=$(sudo smartctl -n standby $HDD_DEVICE | grep "Device is in" | awk '{print $4}')
     if [ $? -ne 0 ]; then
         error "Failed to get HDD state"
         return
@@ -216,6 +217,22 @@ disk_usage() {
     print_key_vals \
         disk_free_kb $disk_free_Kb \
         disk_used_pc $disk_used_pc
+}
+
+fan_speed() {
+    if [ -z "$FAN_DEVICE" ]; then
+        error "FAN_DEVICE is not set"
+        return
+    fi
+
+    fan_speed=$(sensors | grep "$FAN_DEVICE" | awk '{print $2}')
+    if [ -z "$fan_speed" ]; then
+        error "Failed to get fan speed"
+        return
+    fi
+
+    print_key_vals \
+        fan_speed "$fan_speed"
 }
 
 wifi_signal() {
@@ -394,6 +411,7 @@ publish_state_loop() {
         [ $ENABLE_MEMORY -eq 1 ] && val=$(memory_usage) && data="${data},$val"
         [ $ENABLE_SWAP -eq 1 ] && val=$(swap_usage) && data="${data},$val"
         [ $ENABLE_HDD_STATE -eq 1 ] && val=$(check_hdd) && data="${data},$val"
+        [ $ENABLE_FAN_SPEED -eq 1 ] && val=$(fan_speed) && data="${data},$val"
         [ $ENABLE_DISK -eq 1 ] && val=$(disk_usage) && data="${data},$val"
         [ $ENABLE_LOAD -eq 1 ] && val=$(avg_load) && data="${data},$val"
         [ $ENABLE_WIFI -eq 1 ] && val=$(wifi_signal) && data="${data},$val"
@@ -461,6 +479,7 @@ publish_discovery_all() {
     [ $ENABLE_DISK -eq 1 ] && publish_discovery_sensor disk_used_pc "Disk used" "%"
 
     [ $ENABLE_HDD_STATE -eq 1 ] && publish_discovery_sensor hdd_state "HDD state" ""
+    [ $ENABLE_FAN_SPEED -eq 1 ] && publish_discovery_sensor fan_speed "Fan speed" "RPM"
 
     if [ $ENABLE_TOP_CPU -eq 1 ]; then
         i=1
